@@ -8,10 +8,12 @@ contract ForeverMessage {
     uint256 public constant EXPIRATION_DAYS = 30;
     uint256 public constant SECONDS_PER_DAY = 86400;
 
+    // Contract deployer address (set at deployment)
+    address public immutable DEPLOYER;
+
     // Bottle structure representing a message
     struct Bottle {
         uint256 id;
-        address author;
         string ipfsHash;
         uint256 createdAt;
         uint256 expiresAt;
@@ -25,7 +27,6 @@ contract ForeverMessage {
     struct Comment {
         uint256 id;
         uint256 bottleId;
-        address author;
         string ipfsHash;
         uint256 createdAt;
         bool exists;
@@ -39,22 +40,19 @@ contract ForeverMessage {
     mapping(uint256 => Bottle) public bottles;
     mapping(uint256 => Comment) public comments;
     mapping(uint256 => uint256[]) public bottleComments;
-    mapping(uint256 => mapping(address => bool)) public bottleLikes;
-    mapping(address => uint256[]) public userBottles;
+    // Note: User relationships (likes, user bottles) handled off-chain in Supabase
 
     // Events
     event BottleCreated(
         uint256 indexed bottleId,
-        address indexed author,
         string ipfsHash,
         uint256 expiresAt
     );
-    event BottleLiked(uint256 indexed bottleId, address indexed liker);
-    event BottleUnliked(uint256 indexed bottleId, address indexed unliker);
+    event BottleLiked(uint256 indexed bottleId);
+    event BottleUnliked(uint256 indexed bottleId);
     event CommentAdded(
         uint256 indexed commentId,
         uint256 indexed bottleId,
-        address indexed author,
         string ipfsHash
     );
     event BottleBecameForever(uint256 indexed bottleId);
@@ -74,13 +72,19 @@ contract ForeverMessage {
         _;
     }
 
+    modifier onlyDeployer() {
+        require(msg.sender == DEPLOYER, "Only deployer can call this function");
+        _;
+    }
+
     constructor() {
+        DEPLOYER = msg.sender;
         nextBottleId = 1;
         nextCommentId = 1;
     }
 
     // Create a new bottle (message)
-    function createBottle(string memory _ipfsHash) external returns (uint256) {
+    function createBottle(string memory _ipfsHash) external onlyDeployer returns (uint256) {
         require(bytes(_ipfsHash).length > 0, "IPFS hash cannot be empty");
 
         uint256 bottleId = nextBottleId++;
@@ -89,7 +93,6 @@ contract ForeverMessage {
 
         bottles[bottleId] = Bottle({
             id: bottleId,
-            author: msg.sender,
             ipfsHash: _ipfsHash,
             createdAt: block.timestamp,
             expiresAt: expiresAt,
@@ -99,43 +102,26 @@ contract ForeverMessage {
             exists: true
         });
 
-        userBottles[msg.sender].push(bottleId);
-
-        emit BottleCreated(bottleId, msg.sender, _ipfsHash, expiresAt);
+        emit BottleCreated(bottleId, _ipfsHash, expiresAt);
 
         return bottleId;
     }
 
-    // Like a bottle
+    // Like a bottle (user validation handled off-chain)
     function likeBottle(
         uint256 _bottleId
-    ) external bottleExists(_bottleId) bottleNotExpired(_bottleId) {
-        require(
-            !bottleLikes[_bottleId][msg.sender],
-            "Already liked this bottle"
-        );
-
-        bottleLikes[_bottleId][msg.sender] = true;
+    ) external onlyDeployer bottleExists(_bottleId) bottleNotExpired(_bottleId) {
         bottles[_bottleId].likeCount++;
-
-        emit BottleLiked(_bottleId, msg.sender);
-
+        emit BottleLiked(_bottleId);
         _checkForeverStatus(_bottleId);
     }
 
-    // Unlike a bottle
+    // Unlike a bottle (user validation handled off-chain)
     function unlikeBottle(
         uint256 _bottleId
-    ) external bottleExists(_bottleId) bottleNotExpired(_bottleId) {
-        require(
-            bottleLikes[_bottleId][msg.sender],
-            "Have not liked this bottle"
-        );
-
-        bottleLikes[_bottleId][msg.sender] = false;
+    ) external onlyDeployer bottleExists(_bottleId) bottleNotExpired(_bottleId) {
         bottles[_bottleId].likeCount--;
-
-        emit BottleUnliked(_bottleId, msg.sender);
+        emit BottleUnliked(_bottleId);
     }
 
     // Add a comment to a bottle
@@ -144,6 +130,7 @@ contract ForeverMessage {
         string memory _ipfsHash
     )
         external
+        onlyDeployer
         bottleExists(_bottleId)
         bottleNotExpired(_bottleId)
         returns (uint256)
@@ -155,7 +142,6 @@ contract ForeverMessage {
         comments[commentId] = Comment({
             id: commentId,
             bottleId: _bottleId,
-            author: msg.sender,
             ipfsHash: _ipfsHash,
             createdAt: block.timestamp,
             exists: true
@@ -164,7 +150,7 @@ contract ForeverMessage {
         bottleComments[_bottleId].push(commentId);
         bottles[_bottleId].commentCount++;
 
-        emit CommentAdded(commentId, _bottleId, msg.sender, _ipfsHash);
+        emit CommentAdded(commentId, _bottleId, _ipfsHash);
 
         _checkForeverStatus(_bottleId);
 
@@ -196,19 +182,6 @@ contract ForeverMessage {
         uint256 _bottleId
     ) external view bottleExists(_bottleId) returns (uint256[] memory) {
         return bottleComments[_bottleId];
-    }
-
-    function getUserBottles(
-        address _user
-    ) external view returns (uint256[] memory) {
-        return userBottles[_user];
-    }
-
-    function hasUserLikedBottle(
-        uint256 _bottleId,
-        address _user
-    ) external view bottleExists(_bottleId) returns (bool) {
-        return bottleLikes[_bottleId][_user];
     }
 
     function isBottleExpired(
