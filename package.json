@@ -1,5 +1,5 @@
 {
-  "name": "forever-message-contract",
+  "name": "@loscolmebrothers/forever-message-contract",
   "version": "1.0.0",
   "description": "Forever Message - Smart contracts for a social experiment platform where daily messages in bottles float in a digital ocean",
   "main": "index.js",
@@ -22,9 +22,12 @@
     "hardhat",
     "ethereum"
   ],
-  "author": "",
+  "author": "LOS COLMEBROTHERS",
   "license": "MIT",
   "type": "module",
+  "dependencies": {
+    "@loscolmebrothers/forever-message-types": "file:../forever-message-types"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^4.0.0",
     "@nomicfoundation/hardhat-ethers-chai-matchers": "^3.0.0",
