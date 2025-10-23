@@ -2,8 +2,6 @@
 pragma solidity ^0.8.28;
 
 contract ForeverMessage {
-    uint256 public constant COMMENTS_THRESHOLD = 4;
-    uint256 public constant LIKES_THRESHOLD = 100;
     uint256 public constant EXPIRATION_DAYS = 30;
     uint256 public constant SECONDS_PER_DAY = 86400;
 
@@ -14,8 +12,6 @@ contract ForeverMessage {
         string ipfsHash;
         uint256 createdAt;
         uint256 expiresAt;
-        uint256 likeCount;
-        uint256 commentCount;
         bool isForever;
         bool exists;
     }
@@ -40,14 +36,15 @@ contract ForeverMessage {
         string ipfsHash,
         uint256 expiresAt
     );
-    event BottleLiked(uint256 indexed bottleId);
-    event BottleUnliked(uint256 indexed bottleId);
+    event BottleLiked(uint256 indexed bottleId, address indexed liker);
+    event BottleUnliked(uint256 indexed bottleId, address indexed unliker);
     event CommentAdded(
         uint256 indexed commentId,
         uint256 indexed bottleId,
         string ipfsHash
     );
-    event BottleBecameForever(uint256 indexed bottleId);
+    event BottleMarkedForever(uint256 indexed bottleId);
+    event BottleIPFSUpdated(uint256 indexed bottleId, string newIpfsHash);
 
     modifier bottleExists(uint256 _bottleId) {
         require(bottles[_bottleId].exists, "Bottle does not exist");
@@ -88,8 +85,6 @@ contract ForeverMessage {
             ipfsHash: _ipfsHash,
             createdAt: block.timestamp,
             expiresAt: expiresAt,
-            likeCount: 0,
-            commentCount: 0,
             isForever: false,
             exists: true
         });
@@ -100,28 +95,29 @@ contract ForeverMessage {
     }
 
     function likeBottle(
-        uint256 _bottleId
+        uint256 _bottleId,
+        address _liker
     )
         external
         onlyDeployer
         bottleExists(_bottleId)
         bottleNotExpired(_bottleId)
     {
-        bottles[_bottleId].likeCount++;
-        emit BottleLiked(_bottleId);
-        _checkForeverStatus(_bottleId);
+        require(_liker != address(0), "Invalid liker address");
+        emit BottleLiked(_bottleId, _liker);
     }
 
     function unlikeBottle(
-        uint256 _bottleId
+        uint256 _bottleId,
+        address _unliker
     )
         external
         onlyDeployer
         bottleExists(_bottleId)
         bottleNotExpired(_bottleId)
     {
-        bottles[_bottleId].likeCount--;
-        emit BottleUnliked(_bottleId);
+        require(_unliker != address(0), "Invalid unliker address");
+        emit BottleUnliked(_bottleId, _unliker);
     }
 
     function addComment(
@@ -147,26 +143,27 @@ contract ForeverMessage {
         });
 
         bottleComments[_bottleId].push(commentId);
-        bottles[_bottleId].commentCount++;
 
         emit CommentAdded(commentId, _bottleId, _ipfsHash);
-
-        _checkForeverStatus(_bottleId);
 
         return commentId;
     }
 
-    function _checkForeverStatus(uint256 _bottleId) private {
-        Bottle storage bottle = bottles[_bottleId];
+    function updateBottleIPFS(
+        uint256 _bottleId,
+        string memory _newIpfsHash
+    ) external onlyDeployer bottleExists(_bottleId) {
+        require(bytes(_newIpfsHash).length > 0, "IPFS hash cannot be empty");
+        bottles[_bottleId].ipfsHash = _newIpfsHash;
+        emit BottleIPFSUpdated(_bottleId, _newIpfsHash);
+    }
 
-        if (
-            !bottle.isForever &&
-            bottle.likeCount >= LIKES_THRESHOLD &&
-            bottle.commentCount >= COMMENTS_THRESHOLD
-        ) {
-            bottle.isForever = true;
-            emit BottleBecameForever(_bottleId);
-        }
+    function markBottleAsForever(
+        uint256 _bottleId
+    ) external onlyDeployer bottleExists(_bottleId) {
+        require(!bottles[_bottleId].isForever, "Bottle is already forever");
+        bottles[_bottleId].isForever = true;
+        emit BottleMarkedForever(_bottleId);
     }
 
     function getBottle(
