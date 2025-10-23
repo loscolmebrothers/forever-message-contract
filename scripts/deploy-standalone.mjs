@@ -12,12 +12,16 @@ dotenv.config({ path: path.join(__dirname, "../.env") });
 async function main() {
   console.log("🚀 Starting ForeverMessage deployment...\n");
 
-  // Load contract artifact
+  // Load contract artifact (Foundry output)
   const artifactPath = path.join(
     __dirname,
-    "../artifacts/contracts/ForeverMessage.sol/ForeverMessage.json"
+    "../out/ForeverMessage.sol/ForeverMessage.json"
   );
   const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
+
+  // Foundry's JSON structure has abi and bytecode in different format
+  const abi = artifact.abi;
+  const bytecode = artifact.bytecode.object;
 
   // Get RPC URL and private key from environment
   const rpcUrl = process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org";
@@ -54,11 +58,7 @@ async function main() {
 
   // Deploy contract
   console.log("📝 Deploying ForeverMessage contract...");
-  const factory = new ethers.ContractFactory(
-    artifact.abi,
-    artifact.bytecode,
-    wallet
-  );
+  const factory = new ethers.ContractFactory(abi, bytecode, wallet);
   const contract = await factory.deploy();
 
   console.log("⏳ Waiting for deployment transaction...");

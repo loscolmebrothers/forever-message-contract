@@ -1,10 +1,7 @@
-# Hardhat files
-cache
-artifacts
-types
-
-# TypeScript
-*.tsbuildinfo
+# Foundry files
+out
+cache_forge
+lib
 
 # Dependencies
 node_modules
@@ -39,13 +36,3 @@ yarn-error.log*
 coverage
 coverage.json
 *.lcov
-
-# Hardhat Ignition default folder for deployments against a local node
-ignition/deployments/chain-31337
-
-# Hardhat config variables
-hardhat.vars
-
-# Typechain
-typechain
-typechain-types

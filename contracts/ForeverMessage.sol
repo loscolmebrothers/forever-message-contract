@@ -4,11 +4,14 @@ pragma solidity ^0.8.28;
 contract ForeverMessage {
     uint256 public constant EXPIRATION_DAYS = 30;
     uint256 public constant SECONDS_PER_DAY = 86400;
+    uint256 public constant FOREVER_LIKES_THRESHOLD = 100;
+    uint256 public constant FOREVER_COMMENTS_THRESHOLD = 4;
 
     address public immutable DEPLOYER;
 
     struct Bottle {
         uint256 id;
+        address creator;
         string ipfsHash;
         uint256 createdAt;
         uint256 expiresAt;
@@ -19,6 +22,7 @@ contract ForeverMessage {
     struct Comment {
         uint256 id;
         uint256 bottleId;
+        address commenter;
         string ipfsHash;
         uint256 createdAt;
         bool exists;
@@ -33,6 +37,7 @@ contract ForeverMessage {
 
     event BottleCreated(
         uint256 indexed bottleId,
+        address indexed creator,
         string ipfsHash,
         uint256 expiresAt
     );
@@ -41,6 +46,7 @@ contract ForeverMessage {
     event CommentAdded(
         uint256 indexed commentId,
         uint256 indexed bottleId,
+        address indexed commenter,
         string ipfsHash
     );
     event BottleMarkedForever(uint256 indexed bottleId);
@@ -72,9 +78,11 @@ contract ForeverMessage {
     }
 
     function createBottle(
-        string memory _ipfsHash
+        string memory _ipfsHash,
+        address _creator
     ) external onlyDeployer returns (uint256) {
         require(bytes(_ipfsHash).length > 0, "IPFS hash cannot be empty");
+        require(_creator != address(0), "Invalid creator address");
 
         uint256 bottleId = nextBottleId++;
         uint256 expiresAt = block.timestamp +
@@ -82,6 +90,7 @@ contract ForeverMessage {
 
         bottles[bottleId] = Bottle({
             id: bottleId,
+            creator: _creator,
             ipfsHash: _ipfsHash,
             createdAt: block.timestamp,
             expiresAt: expiresAt,
@@ -89,7 +98,7 @@ contract ForeverMessage {
             exists: true
         });
 
-        emit BottleCreated(bottleId, _ipfsHash, expiresAt);
+        emit BottleCreated(bottleId, _creator, _ipfsHash, expiresAt);
 
         return bottleId;
     }
@@ -122,7 +131,8 @@ contract ForeverMessage {
 
     function addComment(
         uint256 _bottleId,
-        string memory _ipfsHash
+        string memory _ipfsHash,
+        address _commenter
     )
         external
         onlyDeployer
@@ -131,12 +141,14 @@ contract ForeverMessage {
         returns (uint256)
     {
         require(bytes(_ipfsHash).length > 0, "IPFS hash cannot be empty");
+        require(_commenter != address(0), "Invalid commenter address");
 
         uint256 commentId = nextCommentId++;
 
         comments[commentId] = Comment({
             id: commentId,
             bottleId: _bottleId,
+            commenter: _commenter,
             ipfsHash: _ipfsHash,
             createdAt: block.timestamp,
             exists: true
@@ -144,7 +156,7 @@ contract ForeverMessage {
 
         bottleComments[_bottleId].push(commentId);
 
-        emit CommentAdded(commentId, _bottleId, _ipfsHash);
+        emit CommentAdded(commentId, _bottleId, _commenter, _ipfsHash);
 
         return commentId;
     }
@@ -162,6 +174,22 @@ contract ForeverMessage {
         uint256 _bottleId
     ) external onlyDeployer bottleExists(_bottleId) {
         require(!bottles[_bottleId].isForever, "Bottle is already forever");
+        bottles[_bottleId].isForever = true;
+        emit BottleMarkedForever(_bottleId);
+    }
+
+    function checkAndPromoteToForever(
+        uint256 _bottleId,
+        uint256 _likeCount,
+        uint256 _commentCount
+    ) external onlyDeployer bottleExists(_bottleId) {
+        require(!bottles[_bottleId].isForever, "Bottle is already forever");
+        require(
+            _likeCount >= FOREVER_LIKES_THRESHOLD &&
+                _commentCount >= FOREVER_COMMENTS_THRESHOLD,
+            "Thresholds not met"
+        );
+
         bottles[_bottleId].isForever = true;
         emit BottleMarkedForever(_bottleId);
     }
