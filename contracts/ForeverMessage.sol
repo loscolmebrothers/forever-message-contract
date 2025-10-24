@@ -170,26 +170,29 @@ contract ForeverMessage {
         emit BottleIPFSUpdated(_bottleId, _newIpfsHash);
     }
 
-    function markBottleAsForever(
-        uint256 _bottleId
-    ) external onlyDeployer bottleExists(_bottleId) {
-        require(!bottles[_bottleId].isForever, "Bottle is already forever");
-        bottles[_bottleId].isForever = true;
-        emit BottleMarkedForever(_bottleId);
-    }
-
-    function checkAndPromoteToForever(
+    function checkIsForever(
         uint256 _bottleId,
         uint256 _likeCount,
         uint256 _commentCount
     ) external onlyDeployer bottleExists(_bottleId) {
-        require(!bottles[_bottleId].isForever, "Bottle is already forever");
-        require(
-            _likeCount >= FOREVER_LIKES_THRESHOLD &&
-                _commentCount >= FOREVER_COMMENTS_THRESHOLD,
-            "Thresholds not met"
-        );
+        if (_meetsForeverThresholds(_likeCount, _commentCount)) {
+            _promoteToForever(_bottleId);
+        }
+    }
 
+    function _meetsForeverThresholds(
+        uint256 _likeCount,
+        uint256 _commentCount
+    ) internal pure returns (bool) {
+        return
+            _likeCount >= FOREVER_LIKES_THRESHOLD &&
+            _commentCount >= FOREVER_COMMENTS_THRESHOLD;
+    }
+
+    function _promoteToForever(uint256 _bottleId) internal {
+        if (bottles[_bottleId].isForever) {
+            return;
+        }
         bottles[_bottleId].isForever = true;
         emit BottleMarkedForever(_bottleId);
     }

@@ -269,72 +269,82 @@ contract ForeverMessageTest is Test {
                     FOREVER PROMOTION TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_CheckAndPromoteToForever_Success() public {
+    function test_CheckIsForever_Success() public {
         foreverMessage.createBottle(IPFS_HASH_1, user1);
 
         vm.expectEmit(true, false, false, false);
         emit BottleMarkedForever(1);
 
-        foreverMessage.checkAndPromoteToForever(1, 100, 4);
+        foreverMessage.checkIsForever(1, 100, 4);
 
         (, , , , , bool isForever, ) = foreverMessage.bottles(1);
         assertTrue(isForever);
     }
 
-    function test_CheckAndPromoteToForever_ExactThresholds() public {
+    function test_CheckIsForever_ExactThresholds() public {
         foreverMessage.createBottle(IPFS_HASH_1, user1);
 
         // Exactly 100 likes and 4 comments should work
-        foreverMessage.checkAndPromoteToForever(1, 100, 4);
+        foreverMessage.checkIsForever(1, 100, 4);
 
         (, , , , , bool isForever, ) = foreverMessage.bottles(1);
         assertTrue(isForever);
     }
 
-    function test_CheckAndPromoteToForever_AboveThresholds() public {
+    function test_CheckIsForever_AboveThresholds() public {
         foreverMessage.createBottle(IPFS_HASH_1, user1);
 
         // Way above thresholds should work
-        foreverMessage.checkAndPromoteToForever(1, 500, 20);
+        foreverMessage.checkIsForever(1, 500, 20);
 
         (, , , , , bool isForever, ) = foreverMessage.bottles(1);
         assertTrue(isForever);
     }
 
-    function test_CheckAndPromoteToForever_RevertsIfLikesInsufficient() public {
+    function test_CheckIsForever_DoesNothingIfLikesInsufficient() public {
         foreverMessage.createBottle(IPFS_HASH_1, user1);
 
-        vm.expectRevert("Thresholds not met");
-        foreverMessage.checkAndPromoteToForever(1, 99, 4);
+        // Should not promote, but also not revert
+        foreverMessage.checkIsForever(1, 99, 4);
+
+        (, , , , , bool isForever, ) = foreverMessage.bottles(1);
+        assertFalse(isForever);
     }
 
-    function test_CheckAndPromoteToForever_RevertsIfCommentsInsufficient()
-        public
-    {
+    function test_CheckIsForever_DoesNothingIfCommentsInsufficient() public {
         foreverMessage.createBottle(IPFS_HASH_1, user1);
 
-        vm.expectRevert("Thresholds not met");
-        foreverMessage.checkAndPromoteToForever(1, 100, 3);
+        // Should not promote, but also not revert
+        foreverMessage.checkIsForever(1, 100, 3);
+
+        (, , , , , bool isForever, ) = foreverMessage.bottles(1);
+        assertFalse(isForever);
     }
 
-    function test_CheckAndPromoteToForever_RevertsIfBothInsufficient() public {
+    function test_CheckIsForever_DoesNothingIfBothInsufficient() public {
         foreverMessage.createBottle(IPFS_HASH_1, user1);
 
-        vm.expectRevert("Thresholds not met");
-        foreverMessage.checkAndPromoteToForever(1, 50, 2);
+        // Should not promote, but also not revert
+        foreverMessage.checkIsForever(1, 50, 2);
+
+        (, , , , , bool isForever, ) = foreverMessage.bottles(1);
+        assertFalse(isForever);
     }
 
-    function test_CheckAndPromoteToForever_RevertsIfAlreadyForever() public {
+    function test_CheckIsForever_IdempotentIfAlreadyForever() public {
         foreverMessage.createBottle(IPFS_HASH_1, user1);
-        foreverMessage.checkAndPromoteToForever(1, 100, 4);
+        foreverMessage.checkIsForever(1, 100, 4);
 
-        vm.expectRevert("Bottle is already forever");
-        foreverMessage.checkAndPromoteToForever(1, 100, 4);
+        // Should not revert, just silently skip
+        foreverMessage.checkIsForever(1, 100, 4);
+
+        (, , , , , bool isForever, ) = foreverMessage.bottles(1);
+        assertTrue(isForever);
     }
 
     function test_ForeverBottle_DoesNotExpire() public {
         foreverMessage.createBottle(IPFS_HASH_1, user1);
-        foreverMessage.checkAndPromoteToForever(1, 100, 4);
+        foreverMessage.checkIsForever(1, 100, 4);
 
         // Fast forward way past expiration
         vm.warp(block.timestamp + 365 days);
@@ -345,30 +355,6 @@ contract ForeverMessageTest is Test {
 
         bool isExpired = foreverMessage.isBottleExpired(1);
         assertFalse(isExpired);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                    MANUAL FOREVER MARKING TESTS
-    //////////////////////////////////////////////////////////////*/
-
-    function test_MarkBottleAsForever_Success() public {
-        foreverMessage.createBottle(IPFS_HASH_1, user1);
-
-        vm.expectEmit(true, false, false, false);
-        emit BottleMarkedForever(1);
-
-        foreverMessage.markBottleAsForever(1);
-
-        (, , , , , bool isForever, ) = foreverMessage.bottles(1);
-        assertTrue(isForever);
-    }
-
-    function test_MarkBottleAsForever_RevertsIfAlreadyForever() public {
-        foreverMessage.createBottle(IPFS_HASH_1, user1);
-        foreverMessage.markBottleAsForever(1);
-
-        vm.expectRevert("Bottle is already forever");
-        foreverMessage.markBottleAsForever(1);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -404,7 +390,7 @@ contract ForeverMessageTest is Test {
 
     function test_IsBottleExpired_ForeverNeverExpires() public {
         foreverMessage.createBottle(IPFS_HASH_1, user1);
-        foreverMessage.markBottleAsForever(1);
+        foreverMessage.checkIsForever(1, 100, 4);
 
         // 1 year later
         vm.warp(block.timestamp + 365 days);
@@ -527,7 +513,7 @@ contract ForeverMessageTest is Test {
         assertTrue(exists);
     }
 
-    function testFuzz_CheckAndPromoteToForever_ValidCounts(
+    function testFuzz_CheckIsForever_ValidCounts(
         uint256 likes,
         uint256 comments
     ) public {
@@ -535,13 +521,13 @@ contract ForeverMessageTest is Test {
         vm.assume(comments >= 4 && comments < type(uint256).max);
 
         foreverMessage.createBottle(IPFS_HASH_1, user1);
-        foreverMessage.checkAndPromoteToForever(1, likes, comments);
+        foreverMessage.checkIsForever(1, likes, comments);
 
         (, , , , , bool isForever, ) = foreverMessage.bottles(1);
         assertTrue(isForever);
     }
 
-    function testFuzz_CheckAndPromoteToForever_InvalidCounts(
+    function testFuzz_CheckIsForever_InvalidCounts(
         uint256 likes,
         uint256 comments
     ) public {
@@ -549,7 +535,10 @@ contract ForeverMessageTest is Test {
 
         foreverMessage.createBottle(IPFS_HASH_1, user1);
 
-        vm.expectRevert("Thresholds not met");
-        foreverMessage.checkAndPromoteToForever(1, likes, comments);
+        // Should not promote, but also not revert
+        foreverMessage.checkIsForever(1, likes, comments);
+
+        (, , , , , bool isForever, ) = foreverMessage.bottles(1);
+        assertFalse(isForever);
     }
 }

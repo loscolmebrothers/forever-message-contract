@@ -26,7 +26,6 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "@loscolmebrothers/forever-message-types": "file:../forever-message-types",
     "dotenv": "^17.2.3"
   },
   "devDependencies": {
