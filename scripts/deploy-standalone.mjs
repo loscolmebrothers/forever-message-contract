@@ -15,7 +15,7 @@ async function main() {
   // Load contract artifact (Foundry output)
   const artifactPath = path.join(
     __dirname,
-    "../out/ForeverMessage.sol/ForeverMessage.json"
+    "../out/ForeverMessage.sol/ForeverMessage.json",
   );
   const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
 
@@ -29,10 +29,10 @@ async function main() {
 
   if (!privateKey) {
     console.error(
-      "❌ Error: BASE_SEPOLIA_PRIVATE_KEY environment variable not set"
+      "❌ Error: BASE_SEPOLIA_PRIVATE_KEY environment variable not set",
     );
     console.log(
-      "\nSet it with: export BASE_SEPOLIA_PRIVATE_KEY=your_private_key"
+      "\nSet it with: export BASE_SEPOLIA_PRIVATE_KEY=your_private_key",
     );
     process.exit(1);
   }
@@ -43,7 +43,7 @@ async function main() {
 
   console.log(
     "📡 Network:",
-    await provider.getNetwork().then((network) => network.name)
+    await provider.getNetwork().then((network) => network.name),
   );
   console.log("👤 Deployer address:", wallet.address);
 
@@ -76,12 +76,12 @@ async function main() {
     console.log(
       "   Gas price:",
       ethers.formatUnits(receipt.gasPrice, "gwei"),
-      "gwei"
+      "gwei",
     );
     console.log(
       "   Total cost:",
       ethers.formatEther(receipt.gasUsed * receipt.gasPrice),
-      "ETH"
+      "ETH",
     );
     console.log("   Block number:", receipt.blockNumber);
   }
