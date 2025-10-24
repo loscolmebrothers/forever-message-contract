@@ -1,7 +1,7 @@
 {
   "name": "@loscolmebrothers/forever-message-contract",
-  "version": "1.0.0",
-  "description": "Forever Message - Smart contracts for a social experiment platform where daily messages in bottles float in a digital ocean",
+  "version": "2.0.0",
+  "description": "Multi-user smart contracts for Forever Message - a social experiment platform where messages in bottles float in a digital ocean",
   "main": "index.js",
   "scripts": {
     "test": "forge test -vv",
@@ -19,8 +19,9 @@
     "blockchain",
     "ipfs",
     "social-platform",
-    "hardhat",
-    "ethereum"
+    "foundry",
+    "ethereum",
+    "multi-user"
   ],
   "author": "LOS COLMEBROTHERS",
   "license": "MIT",
