@@ -89,6 +89,8 @@ async function main() {
   // Verify contract constants
   console.log("\n🔧 Contract Configuration:");
   console.log("   Expiration days:", await contract.EXPIRATION_DAYS());
+  console.log("   Initial nextBottleId:", await contract.nextBottleId());
+  console.log("   Initial nextCommentId:", await contract.nextCommentId());
 
   console.log("\n📋 Deployment Summary:");
   console.log("   Contract:", contractAddress);

@@ -28,8 +28,8 @@ contract ForeverMessage {
         bool exists;
     }
 
-    uint256 private nextBottleId;
-    uint256 private nextCommentId;
+    uint256 public nextBottleId;
+    uint256 public nextCommentId;
 
     mapping(uint256 => Bottle) public bottles;
     mapping(uint256 => Comment) public comments;
