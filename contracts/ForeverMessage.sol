@@ -34,21 +34,17 @@ contract ForeverMessage {
     event BottleIPFSUpdated(uint256 indexed bottleId, string newIpfsHash);
 
     modifier bottleExists(uint256 _bottleId) {
-        require(bottles[_bottleId].exists, "Bottle does not exist");
+        _bottleExists(_bottleId);
         _;
     }
 
     modifier bottleNotExpired(uint256 _bottleId) {
-        require(
-            bottles[_bottleId].isForever ||
-                block.timestamp < bottles[_bottleId].expiresAt,
-            "Bottle has expired"
-        );
+        _bottleNotExpired(_bottleId);
         _;
     }
 
     modifier onlyDeployer() {
-        require(msg.sender == DEPLOYER, "Only deployer can call this function");
+        _onlyDeployer();
         _;
     }
 
@@ -139,6 +135,22 @@ contract ForeverMessage {
         }
         bottles[_bottleId].isForever = true;
         emit BottleMarkedForever(_bottleId);
+    }
+
+    function _bottleExists(uint256 _bottleId) internal view {
+        require(bottles[_bottleId].exists, "Bottle does not exist");
+    }
+
+    function _bottleNotExpired(uint256 _bottleId) internal view {
+        require(
+            bottles[_bottleId].isForever ||
+                block.timestamp < bottles[_bottleId].expiresAt,
+            "Bottle has expired"
+        );
+    }
+
+    function _onlyDeployer() internal view {
+        require(msg.sender == DEPLOYER, "Only deployer can call this function");
     }
 
     function getBottle(
