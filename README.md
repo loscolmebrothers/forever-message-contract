@@ -8,13 +8,15 @@ The ForeverMessage contract enables:
 - **Multi-user ownership**: Each bottle/comment tracks its creator address
 - **Gasless for users**: Backend relayer pays all gas costs via `onlyDeployer` modifier
 - **Automatic forever promotion**: Bottles meeting thresholds (100 likes + 4 comments) become permanent
-- **IPFS integration**: Stores content hashes on-chain, actual content in IPFS for gas efficiency
+- **Storage integration**: Stores content references on-chain, actual content in Supabase Storage for gas efficiency
 - **Time-based expiration**: Bottles expire after 7 days unless promoted to forever status
+
+> **Note on the `ipfsHash` field**: The `ipfsHash` field in the contract ABI (and related identifiers such as `updateBottleIPFS` and the `BottleIPFSUpdated` event) is a **legacy name** retained for **on-chain ABI compatibility** — it cannot be renamed without breaking deployed contracts. Despite the name, `ipfsHash` now stores a **Supabase Storage path** rather than an IPFS CID. The code-level identifiers are intentionally unchanged.
 
 ## Architecture
 
 ### Design Principles
-1. **Separation of concerns**: Contract stores references, IPFS stores content
+1. **Separation of concerns**: Contract stores references, Supabase Storage stores content
 2. **Gas optimization**: Only critical data on-chain (hashes, timestamps, engagement counts)
 3. **Centralized thresholds**: Contract is single source of truth for forever promotion logic
 4. **Backend relayer**: Users never pay gas; backend calls contract with user addresses
@@ -102,7 +104,7 @@ yarn test:gas:price
 - Forever promotion (7 tests)
 - Manual forever marking (2 tests)
 - Expiration (4 tests)
-- IPFS updates (2 tests)
+- Content hash updates (2 tests)
 - View functions (4 tests)
 - Edge cases (2 tests)
 - Fuzz tests (3 tests)
@@ -154,7 +156,7 @@ Checks if bottle meets thresholds and promotes to forever if eligible.
 - **Thresholds**: 100 likes AND 4 comments
 
 #### `updateBottleIPFS(uint256 _bottleId, string memory _newIpfsHash)`
-Updates bottle IPFS hash (for count synchronization).
+Updates the bottle content reference in the legacy `ipfsHash` field, which now stores a Supabase Storage path (used for count synchronization).
 - **Access**: `onlyDeployer`
 - **Emits**: `BottleIPFSUpdated(bottleId, oldHash, newHash)`
 
@@ -200,14 +202,14 @@ event BottleIPFSUpdated(uint256 indexed bottleId, string oldIpfsHash, string new
 
 ### Creating a Bottle
 1. User interacts with frontend
-2. Backend uploads content to IPFS → gets CID
-3. Backend calls `createBottle(CID, userAddress)` with deployer wallet
+2. Backend uploads content to Supabase Storage → gets a storage path
+3. Backend calls `createBottle(storagePath, userAddress)` with deployer wallet
 4. Contract stores reference and emits event with user as creator
 5. User owns bottle on-chain (verifiable via creator address)
 
 ### Forever Promotion
 1. User likes/comments on bottle
-2. Backend increments counts in IPFS
+2. Backend increments counts in storage
 3. Backend calls `checkIsForever(bottleId, likeCount, commentCount)`
 4. Contract checks if thresholds met (≥100 likes AND ≥4 comments)
 5. If yes, contract promotes to forever automatically
